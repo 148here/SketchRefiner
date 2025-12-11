@@ -27,6 +27,7 @@ Chang Liu, Shunxin Xu, Jialun Peng, Kaidong Zhang, Dong Liu
 
 <!-- omit in toc -->
 # 🔥News
+- [Dec. 11th, 2025] Our paper titled ["StableV2V: Stablizing Shape Consistency in Video-to-Video Editing"](https://ieeexplore.ieee.org/document/11272911) is accepted at TCSVT 2025!
 - [Aug. 7th] We are currently modifying the current codebase (ICCV version) to the corresponding version of our accepted paper (TMM version). Code will be progressively updated in near future.
 - [May 17th] Our paper titled ["Towards Interactive Image Inpainting via Robust Sketch Refinement"](https://ieeexplore.ieee.org/document/10533842) is accepted by TMM 2024! 
 
