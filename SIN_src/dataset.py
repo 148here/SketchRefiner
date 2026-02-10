@@ -13,6 +13,24 @@ from skimage.color import rgb2gray
 from skimage.feature import canny
 from torch.utils.data import DataLoader
 
+# 在线生成 edge / sketch / mask 的工具与配置（与 SRN 共享）
+try:
+    from YZA_patch.config import (
+        RESOLUTION as YZA_RESOLUTION,
+        USE_COMPLEX_MASK,
+        USE_ONLINE_SKETCH_FOR_SIN,
+        SKETCH_PARAMS,
+        MASK_PARAMS,
+    )
+    from YZA_patch.generator import generate_triplet
+except ImportError:
+    YZA_RESOLUTION = None
+    USE_COMPLEX_MASK = False
+    USE_ONLINE_SKETCH_FOR_SIN = False
+    SKETCH_PARAMS = {}
+    MASK_PARAMS = {}
+    generate_triplet = None
+
 
 # function to return a path list from a txt file
 def get_files_from_txt(path):
@@ -167,15 +185,45 @@ class TrainDataset(torch.utils.data.Dataset):
         name = name.split('.')[0] + '.png'
         prefix = self.data[index].split(name)[0]
 
-        # load mask
-        mask = generate_stroke_mask([size, size])
-        _, mask = cv2.threshold(mask, 0.5, 1.0, cv2.THRESH_BINARY) 
+        # load mask & sketch
+        # 支持两种模式：
+        # - 在线模式：调用 YZA_patch.generator.generate_triplet，生成 sketch/mask
+        # - 磁盘模式：保持原始行为，从 sketch_path 读 sketch，并用 generate_stroke_mask 生成 mask
+        use_online = bool(USE_ONLINE_SKETCH_FOR_SIN and generate_triplet is not None)
 
-        # load sketch
-        sketch = cv2.imread(os.path.join(self.sketch_path, name))
-        # sketch = cv2.imread(prefix + name + '_edge.png')
-        sketch = cv2.resize(sketch, [size, size])
-        _, sketch = cv2.threshold(sketch, thresh=127.5, maxval=255., type=cv2.THRESH_BINARY)
+        if use_online:
+            # 在线生成：与 SRN / YZApatch 一致
+            _, _, sketch_np, mask_np = generate_triplet(
+                image_path=self.data[index],
+                resolution=size,
+                use_complex_mask=USE_COMPLEX_MASK,
+                sketch_params=SKETCH_PARAMS,
+                mask_params=MASK_PARAMS,
+            )
+
+            # mask：若 ComplexMaskGenerator 未启用则回退到自由涂抹
+            if mask_np is None:
+                mask = generate_stroke_mask([size, size])
+                _, mask = cv2.threshold(mask, 0.5, 1.0, cv2.THRESH_BINARY)
+            else:
+                if mask_np.ndim == 2:
+                    mask_np = np.expand_dims(mask_np, axis=-1)
+                mask = mask_np.astype(np.float32) / 255.0
+                mask = cv2.resize(mask, [size, size], interpolation=cv2.INTER_NEAREST)
+                _, mask = cv2.threshold(mask, 0.5, 1.0, cv2.THRESH_BINARY)
+
+            # sketch：保持与原实现一致的 resize + 二值化
+            sketch = sketch_np
+            sketch = cv2.resize(sketch, [size, size])
+            _, sketch = cv2.threshold(sketch, thresh=127.5, maxval=255., type=cv2.THRESH_BINARY)
+        else:
+            mask = generate_stroke_mask([size, size])
+            _, mask = cv2.threshold(mask, 0.5, 1.0, cv2.THRESH_BINARY)
+
+            sketch = cv2.imread(os.path.join(self.sketch_path, name))
+            # sketch = cv2.imread(prefix + name + '_edge.png')
+            sketch = cv2.resize(sketch, [size, size])
+            _, sketch = cv2.threshold(sketch, thresh=127.5, maxval=255., type=cv2.THRESH_BINARY)
 
 
         batch = dict()

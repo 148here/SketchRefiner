@@ -96,6 +96,16 @@ class BaseInpaintingTrainingModule(nn.Module):
             self.d_scheduler = None
             self.str_scheduler = None
 
+        # resume：仅加载模型权重，不恢复优化器和调度器状态
+        resume_path = getattr(self.config, "RESUME_CHECKPOINT", "")
+        if (not test) and resume_path:
+            if self.global_rank == 0:
+                print(f"Resuming SIN generator/encoder weights from: {resume_path}")
+            ckpt = torch.load(resume_path, map_location="cpu")
+            # generator 与 str_encoder 使用 torch_init_model 以支持部分键加载
+            torch_init_model(self.generator, ckpt, 'generator', rank=self.global_rank)
+            torch_init_model(self.str_encoder, ckpt, 'str_encoder', rank=self.global_rank)
+
     def save(self, epoch, iteration):
         save_dir = os.path.join(self.config.OUTPUT_DIR, "checkpoints")
         if not os.path.exists(save_dir):

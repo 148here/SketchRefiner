@@ -31,6 +31,8 @@ def main_worker(gpu, args):
     config.gpus = args.gpus
     config.GPU_ids = args.GPU_ids
     config.DDP = args.DDP
+    # resume 仅加载模型权重，不恢复优化器状态
+    config.RESUME_CHECKPOINT = getattr(args, "resume_checkpoint", "")
     if config.DDP:
         config.world_size = args.world_size
     else:
@@ -70,6 +72,7 @@ if __name__ == "__main__":
     parser.add_argument('--GPU_ids', type=str, default='0')
     parser.add_argument('--node_rank', type=int, default=0, help='the id of this machine')
     parser.add_argument('--DDP', action='store_true', help='DDP')
+    parser.add_argument('--resume_checkpoint', type=str, default='', help='optional path of generator checkpoint to resume (only model weights)')
 
     args = parser.parse_args()
     config_path = args.config_path

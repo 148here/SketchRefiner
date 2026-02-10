@@ -1,0 +1,103 @@
+环境初始化（一次性）：
+conda create -n sketchrefiner python=3.6
+conda activate sketchrefiner
+pip install torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
+pip install opencv-python
+
+=====================
+SRN：训练（在线生成 edge/sketch/mask）
+=====================
+python SRN_train.py ^
+  --images D:/path/to/train_images ^
+  --output D:/path/to/srn_output ^
+  --val_root_dir D:/path/to/val_root_dir_with_edge_sketch_mask ^
+  --batch_size 10 ^
+  --size 256 ^
+  --max_iters 500003 ^
+  --epochs 10 ^
+  --num_workers 8 ^
+  --lr 1e-4 ^
+  --val_interval 0 ^
+  --sample_interval 10000 ^
+  --checkpoint_interval 50000 ^
+  --rm_l1_weight 1.0 ^
+  --rm_cc_weight 0.4 ^
+  --em_l1_weight 1.0 ^
+  --em_cc_weight 0.9
+
+说明：
+- 训练时不再需要预生成 edge/sketch；是否在线生成由 `YZA_patch/config.py` 控制；
+- `val_root_dir` 为验证集母目录，内部图片需配套 *_edge/_sketch/_mask。
+
+=====================
+SRN：训练 EM（从已训练 RM 继续，带 resume）
+=====================
+python SRN_train.py ^
+  --images D:/path/to/train_images ^
+  --output D:/path/to/srn_em_output ^
+  --val_root_dir D:/path/to/val_root_dir_with_edge_sketch_mask ^
+  --batch_size 10 ^
+  --size 256 ^
+  --train_EM ^
+  --RM_checkpoint D:/path/to/trained_RM_checkpoint.pth ^
+  --resume_checkpoint D:/path/to/previous_EM_checkpoint.pth
+
+说明：
+- `RM_checkpoint`：固定一个已训练好的 Registration Module；
+- `resume_checkpoint`：仅加载 EM 权重（不恢复优化器/迭代计数），用于从旧的 EM checkpoint 继续训练。
+
+=====================
+SRN：测试（refine sketches，基于 *_edge/_sketch/_mask）
+=====================
+python SRN_test.py ^
+  --root_dir D:/path/to/test_root_dir_with_edge_sketch_mask ^
+  --output D:/path/to/srn_test_output ^
+  --size 256 ^
+  --RM_checkpoint D:/path/to/RM_checkpoint.pth ^
+  --EM_checkpoint D:/path/to/EM_checkpoint.pth
+
+说明：
+- `root_dir` 下原图需配套 `xxx_edge.ext / xxx_sketch.ext / xxx_mask.ext` 三种文件。
+
+=====================
+SIN：训练（共用在线 sketch/mask 逻辑，可选 resume）
+=====================
+python SIN_train.py ^
+  --config_path D:/path/to/SIN_src/configs/example.yml ^
+  --GPU_ids 0 ^
+  --nodes 1 ^
+  --gpus 1 ^
+  --node_rank 0 ^
+  --DDP ^
+  --resume_checkpoint D:/path/to/sin_gen_checkpoint.pth
+
+说明：
+- 是否在线生成 sketch/mask 由 `YZA_patch/config.py` 中 `USE_ONLINE_SKETCH_FOR_SIN` 控制：
+  - True：从原图在线生成 sketch/mask（与 SRN / SDXL 一致）；
+  - False：按 example.yml 中的 `SKETCH_PATH` 从磁盘读取 sketch，mask 使用自由涂抹 `generate_stroke_mask`。
+- `resume_checkpoint`：仅加载 generator / str_encoder 的权重，不恢复优化器与调度器。
+
+=====================
+SIN：测试（使用 SRN refined sketches 做 inpainting）
+=====================
+python SIN_test.py ^
+  --config_path D:/path/to/SIN_src/configs/example.yml ^
+  --GPU_ids 0 ^
+  --nodes 1 ^
+  --gpus 1 ^
+  --node_rank 0 ^
+  --DDP ^
+  --images D:/path/to/test_images ^
+  --masks D:/path/to/test_masks ^
+  --edges D:/path/to/test_edges ^
+  --sketches D:/path/to/test_input_sketches ^
+  --refined_sketches D:/path/to/srn_refined_sketches ^
+  --output D:/path/to/sin_test_output ^
+  --checkpoint D:/path/to/sin_checkpoint.pth ^
+  --size 256 ^
+  --num_samples 100 ^
+  --seed 0
+
+说明：
+- `refined_sketches`：来自上一阶段 SRN_test 输出的 refined sketches；
+- 其它路径与 README 中的测试协议保持一致。

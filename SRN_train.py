@@ -14,10 +14,11 @@ def parse_args():
     parser.add_argument('--max_move_upper_bound', type=int, default=100, help='upper bound of the randomize interval of deforming algorithm')
 
     ## validation data
-    parser.add_argument('--images_val', type=str, default='', help='path of ground truth images for validation')
-    parser.add_argument('--masks_val', type=str, default='', help='path of free-form masks for validation')
-    parser.add_argument('--sketches_prefix_val', type=str, default='', help='path prefix of deformed sketches for validation')
-    parser.add_argument('--edges_prefix_val', type=str, default='', help='path prefix of edges for validation')
+    parser.add_argument('--images_val', type=str, default='', help='(legacy) path of ground truth images for validation (txt file)')
+    parser.add_argument('--masks_val', type=str, default='', help='(legacy) path of free-form masks for validation (txt file)')
+    parser.add_argument('--sketches_prefix_val', type=str, default='', help='(legacy) path prefix of deformed sketches for validation')
+    parser.add_argument('--edges_prefix_val', type=str, default='', help='(legacy) path prefix of edges for validation')
+    parser.add_argument('--val_root_dir', type=str, default='', help='root directory of validation images with *_edge/_sketch/_mask companions')
 
     # training configuration
     ## loss function configuration
@@ -29,6 +30,9 @@ def parse_args():
     ## network configuration
     parser.add_argument('--train_EM', action='store_true', help='train enhancement module, otherwise train registration module')
     parser.add_argument('--RM_checkpoint', default='', type=str, help='checkpoint path of fixed RM')
+
+    # resume configuration
+    parser.add_argument('--resume_checkpoint', default='', type=str, help='optional checkpoint path to resume training (RM or EM weights only)')
 
     ## training configuration
     parser.add_argument('--max_iters', default=500003, type=int, help='max iterations of training')

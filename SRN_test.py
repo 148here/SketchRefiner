@@ -14,10 +14,11 @@ from SRN_src.SRN_network import RegistrationModule, EnhancementModule
 def parse_args():
     parser = argparse.ArgumentParser(description='Configuration of sketch refinement network')
 
-    parser.add_argument('--images', default='', type=str, help='path of images')
-    parser.add_argument('--masks', default='', type=str, help='path prefix of masks')
-    parser.add_argument('--edge_prefix', default='', type=str, help='path prefix of edges')
-    parser.add_argument('--sketch_prefix', default='', type=str, help='path prefix of sketches')
+    parser.add_argument('--images', default='', type=str, help='(legacy) path of images')
+    parser.add_argument('--masks', default='', type=str, help='(legacy) path prefix of masks')
+    parser.add_argument('--edge_prefix', default='', type=str, help='(legacy) path prefix of edges')
+    parser.add_argument('--sketch_prefix', default='', type=str, help='(legacy) path prefix of sketches')
+    parser.add_argument('--root_dir', default='', type=str, help='root directory of test images with *_edge/_sketch/_mask files')
     parser.add_argument('--size', default=256, type=int, help='image resolution for testing')
     parser.add_argument('--output', default='', type=str, help='path of output')
     parser.add_argument('--num_samples', type=int, help='number of testing images')
@@ -101,21 +102,77 @@ if __name__ == '__main__':
     registration_module.load_state_dict(torch.load(configs.RM_checkpoint)['parameters'])
     enhancement_module.load_state_dict(torch.load(configs.EM_checkpoint)['parameters'])
 
-    # initialize data
-    image_flist = sorted(get_files_from_path(configs.images))
-    mask_flist = sorted(get_files_from_path(configs.masks))
+    # ============================================================
+    # 初始化数据
+    # - 优先使用 root_dir + *_edge/_sketch/_mask 的组合方式
+    # - 若未提供 root_dir，则回退到旧的独立文件夹逻辑
+    # ============================================================
+    samples = []
+    if configs.root_dir:
+        exts = ['.jpg', '.jpeg', '.png', '.bmp', '.webp']
+        root_dir = configs.root_dir
+        for dirpath, _, filenames in os.walk(root_dir):
+            for name in filenames:
+                path = os.path.join(dirpath, name)
+                ext = os.path.splitext(name)[1].lower()
+                stem = os.path.splitext(name)[0]
+
+                if not ext or ext not in exts:
+                    continue
+                if stem.endswith('_edge') or stem.endswith('_sketch') or stem.endswith('_mask'):
+                    continue
+
+                base_stem = stem
+                parent = dirpath
+
+                def _find_with_suffix(suffix):
+                    candidate = os.path.join(parent, base_stem + suffix + ext)
+                    return candidate if os.path.isfile(candidate) else None
+
+                edge_path = _find_with_suffix('_edge')
+                sketch_path = _find_with_suffix('_sketch')
+                mask_path = _find_with_suffix('_mask')
+
+                if edge_path is None or sketch_path is None or mask_path is None:
+                    continue
+
+                samples.append({
+                    'image': path,
+                    'edge': edge_path,
+                    'sketch': sketch_path,
+                    'mask': mask_path,
+                })
+
+        if len(samples) == 0:
+            raise ValueError(f"No valid test samples found in root_dir: {configs.root_dir}")
+
+        total = len(samples) if configs.num_samples is None else min(configs.num_samples, len(samples))
+    else:
+        image_flist = sorted(get_files_from_path(configs.images))
+        mask_flist = sorted(get_files_from_path(configs.masks))
+        total = configs.num_samples
 
     # inference
-    for i in range(configs.num_samples):
-        image = cv2.imread(image_flist[i])
-        
-        file_name = os.path.basename(image_flist[i])
-        file_name = file_name.split('.')[0] + '.png'
-        
-        mask = cv2.imread(os.path.join(configs.masks, file_name))
+    for i in range(total):
+        if configs.root_dir:
+            sample = samples[i]
+            image = cv2.imread(sample['image'])
+            edge = cv2.imread(sample['edge'])
+            sketch = cv2.imread(sample['sketch'])
+            mask = cv2.imread(sample['mask'])
 
-        edge = cv2.imread(os.path.join(configs.edge_prefix, file_name))
-        sketch = cv2.imread(os.path.join(configs.sketch_prefix, file_name))
+            file_name = os.path.basename(sample['image'])
+            file_name = file_name.split('.')[0] + '.png'
+        else:
+            image = cv2.imread(image_flist[i])
+            
+            file_name = os.path.basename(image_flist[i])
+            file_name = file_name.split('.')[0] + '.png'
+            
+            mask = cv2.imread(os.path.join(configs.masks, file_name))
+
+            edge = cv2.imread(os.path.join(configs.edge_prefix, file_name))
+            sketch = cv2.imread(os.path.join(configs.sketch_prefix, file_name))
 
         # resize
         image = cv2.resize(image, (configs.size, configs.size))

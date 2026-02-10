@@ -78,8 +78,19 @@ class SRNTrainer:
         self.enhancement_module.to(device)
 
         # the checkpoint is saved as dict with keys of 'name', 'model' and 'parameters'
-        if self.configs.train_EM:
-            self.registration_module.load_state_dict(torch.load(self.configs.RM_checkpoint)['parameters'])
+        if self.configs.train_EM and self.configs.RM_checkpoint:
+            # 训练 EM 时，先加载一个已训练好的 RM 作为固定模块
+            rm_state = torch.load(self.configs.RM_checkpoint)
+            self.registration_module.load_state_dict(rm_state['parameters'])
+
+        # 只加载模型权重的 resume（不恢复优化器和迭代计数）
+        if getattr(self.configs, "resume_checkpoint", ""):
+            ckpt = torch.load(self.configs.resume_checkpoint)
+            params = ckpt.get('parameters', ckpt)
+            if self.configs.train_EM:
+                self.enhancement_module.load_state_dict(params)
+            else:
+                self.registration_module.load_state_dict(params)
 
         print('')
         print('-' * 50 + 'NETWORK CONFIGURATION' + '-' * 50)
