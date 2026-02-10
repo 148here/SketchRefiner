@@ -4,6 +4,12 @@ conda activate sketchrefiner
 pip install torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
 pip install opencv-python
 
+export HF_ENDPOINT=https://hf-mirror.com
+
+配置：YZA_patch/config.py
+USE_COMPLEX_MASK
+USE_ONLINE_SKETCH_FOR_SIN
+
 =====================
 SRN：训练（在线生成 edge/sketch/mask）
 =====================
@@ -24,6 +30,13 @@ python SRN_train.py ^
   --rm_cc_weight 0.4 ^
   --em_l1_weight 1.0 ^
   --em_cc_weight 0.9
+
+todo:临时
+pip install -U huggingface_hub
+hf download AlonzoLeeeooo/SketchRefiner --local-dir ./hf_download
+todo:临时：
+确认是否启用在线？还是别的？
+
 
 说明：
 - 训练时不再需要预生成 edge/sketch；是否在线生成由 `YZA_patch/config.py` 控制；
