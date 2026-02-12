@@ -1,4 +1,13 @@
 import argparse
+import multiprocessing
+
+# 设置 multiprocessing start method 为 'spawn'，避免 CUDA 在 fork 子进程中重新初始化的问题
+# 必须在导入 torch 之前设置
+try:
+    multiprocessing.set_start_method('spawn', force=True)
+except RuntimeError:
+    # 如果已经设置过，忽略错误
+    pass
 
 
 # initialize configuration

@@ -36,9 +36,9 @@ def _import_yzapatch_modules() -> Dict[str, Any]:
     - get_edge_cache_manager, make_sketch_from_image_or_edge, extract_edge
     """
     current_dir = Path(__file__).resolve().parent
-    # 当前目录结构：codes/SketchRefiner/YZA_patch
-    # 项目根目录：codes
-    project_root = current_dir.parents[2]
+    # 当前目录结构：yza/SketchRefiner/YZA_patch
+    # 项目根目录：yza（向上1级）
+    project_root = current_dir.parents[1]
     yzapatch_dir = project_root / "diffusers" / "examples" / "controlnet" / "YZApatch"
 
     if not yzapatch_dir.exists():
