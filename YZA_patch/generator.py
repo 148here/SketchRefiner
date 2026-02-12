@@ -14,7 +14,7 @@
 - generate_triplet(image_path, resolution=None, use_complex_mask=None, sketch_params=None, mask_params=None)
 """
 
-from __future__ import annotations
+# from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
