@@ -10,7 +10,7 @@
 ; USE_COMPLEX_MASK
 ; USE_ONLINE_SKETCH_FOR_SIN
 
-
+screen -S sketchrefiner
 
 
 conda activate sketchrefiner
@@ -23,11 +23,11 @@ SRN：训练（在线生成 edge/sketch/mask）
 =====================
 python /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/SRN_train.py \
   --images '/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/data/artbench/export_512/train' \
-  --output '/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/output/train/1' \
+  --output '/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/output/train/2' \
   --batch_size 16 \
   --size 256 \
-  --max_iters 500003 \
-  --epochs 16 \
+  --max_iters 700003 \
+  --epochs 150 \
   --num_workers 8 \
   --lr 1e-5 \
   --val_interval 0 \
@@ -36,34 +36,7 @@ python /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/SR
 
   --val_root_dir D:/path/to/val_root_dir_with_edge_sketch_mask \
 
-todo:临时
-; pip install -U huggingface_hub
-; hf download AlonzoLeeeooo/SketchRefiner --local-dir ./hf_download
-; mkdir -p hf_download/sketch-conditional-inpaintor hf_download/sketch-refinement-networks
-
-; wget -c -O hf_download/sketch-conditional-inpaintor/celebahq.pth \
-;   https://huggingface.co/AlonzoLeeeooo/SketchRefiner/resolve/main/sketch-conditional-inpaintor/celebahq.pth
-
-; wget -c -O hf_download/sketch-conditional-inpaintor/imagenet.pth \
-;   https://huggingface.co/AlonzoLeeeooo/SketchRefiner/resolve/main/sketch-conditional-inpaintor/imagenet.pth
-
-; wget -c -O hf_download/sketch-conditional-inpaintor/places.pth \
-;   https://huggingface.co/AlonzoLeeeooo/SketchRefiner/resolve/main/sketch-conditional-inpaintor/places.pth
-
-; wget -c -O hf_download/sketch-refinement-networks/connector.pth \
-;   https://huggingface.co/AlonzoLeeeooo/SketchRefiner/resolve/main/sketch-refinement-networks/connector.pth
-
-; wget -c -O hf_download/sketch-refinement-networks/registrator.pth \
-;   https://huggingface.co/AlonzoLeeeooo/SketchRefiner/resolve/main/sketch-refinement-networks/registrator.pth
-  
-
-; todo:临时：
-; 确认是否启用在线？还是别的？
-
-
-; 说明：
-; - 训练时不再需要预生成 edge/sketch；是否在线生成由 `YZA_patch/config.py` 控制；
-; - `val_root_dir` 为验证集母目录，内部图片需配套 *_edge/_sketch/_mask。
+tensorboard --logdir /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/output/train/2/tb_logs --port 6006 
 
 =====================
 SRN：训练 EM（从已训练 RM 继续，带 resume）
