@@ -107,9 +107,17 @@ class SRNTrainer:
         self.optimizer_rm = torch.optim.Adam(self.registration_module.parameters(), lr=self.configs.lr)
         self.optimizer_em = torch.optim.Adam(self.enhancement_module.parameters(), lr=self.configs.lr)
 
-        # initialize progressive bar
-        self.progbar = Progbar(len(self.data_loader), width=20, stateful_metrics=['epoch', 'iter'],
-                              verbose=1)
+        # initialize progressive bar: total iters = min(max_iters, epochs * samples_per_epoch)
+        samples_per_epoch = len(self.data_loader) * self.configs.batch_size
+        total_iters_if_full = self.configs.epochs * samples_per_epoch
+        total_iters = min(self.configs.max_iters, total_iters_if_full)
+        self.progbar = TrainingProgbar(
+            total_iters=total_iters,
+            batch_size=self.configs.batch_size,
+            width=20,
+            stateful_metrics=['epoch', 'iter', 'l1_loss', 'cc_loss'],
+            verbose=1
+        )
 
     # train enhancement module
     def train_EM(self):
@@ -188,10 +196,10 @@ class SRNTrainer:
                 logs = [("epoch", epoch), ("iter", self.iteration)] + \
                         [(i, logs[0][i]) for i in logs[0]]
 
-                self.progbar.add(len(data['image']), values=logs)
+                self.progbar.add(1, values=logs)
 
                 # print log
-                if self.iteration % self.configs.log_interval == 0:
+                if getattr(self.configs, 'log_interval', 100) and self.iteration % getattr(self.configs, 'log_interval', 100) == 0:
                     sys.stdout.flush()
 
                 # visualization training samples
@@ -285,7 +293,7 @@ class SRNTrainer:
                         [(i, logs[0][i]) for i in logs[0]]
 
                 # print logs
-                self.progbar.add(len(data['image']), values=logs)
+                self.progbar.add(1, values=logs)
                 
                 # visualization training samples
                 if self.iteration % self.configs.sample_interval == 0:

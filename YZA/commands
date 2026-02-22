@@ -21,6 +21,7 @@ export HF_ENDPOINT=https://hf-mirror.com
 =====================
 SRN：训练（在线生成 edge/sketch/mask）
 =====================
+; 单路径或逗号分隔多路径均可，每个目录递归扫描；多目录示例: --images '/path/dir1,/path/dir2,/path/dir3'
 python /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/SRN_train.py \
   --images '/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/data/artbench/export_512/train' \
   --output '/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/output/train/2' \

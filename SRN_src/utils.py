@@ -293,6 +293,33 @@ class Progbar(object):
         self.update(self._seen_so_far + n, values)
 
 
+class TrainingProgbar(Progbar):
+    """Progress bar for SRN training: uses iters as unit, shows ETA for full task.
+
+    Arguments:
+        total_iters: Real total iterations = min(max_iters, epochs * samples_per_epoch)
+        batch_size: Each add(1) increments current by batch_size iters.
+        width, verbose, interval: Same as Progbar.
+        stateful_metrics: Same as Progbar (epoch, iter, l1_loss, cc_loss, etc.)
+    """
+
+    def __init__(self, total_iters, batch_size, width=25, verbose=1, interval=0.05,
+                 stateful_metrics=None):
+        super(TrainingProgbar, self).__init__(
+            target=total_iters,
+            width=width,
+            verbose=verbose,
+            interval=interval,
+            stateful_metrics=stateful_metrics or ['epoch', 'iter', 'l1_loss', 'cc_loss']
+        )
+        self._batch_size = batch_size
+
+    def add(self, batch_count=1, values=None):
+        """Add batch_count batches; each batch = batch_size iters."""
+        n_iters = batch_count * self._batch_size
+        self.update(self._seen_so_far + n_iters, values)
+
+
 if __name__ == '__main__':
 
     # verbose free form masking algorithm

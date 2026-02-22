@@ -16,7 +16,7 @@ def parse_args():
 
     # data configuration
     ## training data
-    parser.add_argument('--images', type=str, default='', help='path of ground truth images')
+    parser.add_argument('--images', type=str, default='', help='paths of ground truth images; multiple dirs separated by comma, each recursively scanned')
     parser.add_argument('--edges_prefix', type=str, default='', help='path prefix of input edges')
     parser.add_argument('--output', type=str, default='', help='path of output')
     parser.add_argument('--max_move_lower_bound', type=int, default=30, help='lower bound of the randomize interval of deforming algorithm')

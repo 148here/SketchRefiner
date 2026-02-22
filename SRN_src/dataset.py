@@ -162,13 +162,16 @@ class TrainDataset(torch.utils.data.Dataset):
 
 
     def get_files_from_path(self, path):
-
-        # read a folder, return the complete path
+        """Read folders, return complete paths. Supports multiple dirs separated by comma/semicolon, each recursively scanned."""
+        if not path or not path.strip():
+            return []
+        paths = [p.strip() for p in path.replace(';', ',').split(',') if p.strip()]
         ret = []
-        for root, dirs, files in os.walk(path):
-            for filespath in files:
-                ret.append(os.path.join(root, filespath))
-
+        for p in paths:
+            if osp.isdir(p):
+                for root, dirs, files in os.walk(p):
+                    for f in files:
+                        ret.append(osp.join(root, f))
         return ret
 
 
