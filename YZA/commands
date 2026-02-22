@@ -22,6 +22,9 @@ export HF_ENDPOINT=https://hf-mirror.com
 SRN：训练（在线生成 edge/sketch/mask）
 =====================
 ; 单路径或逗号分隔多路径均可，每个目录递归扫描；多目录示例: --images '/path/dir1,/path/dir2,/path/dir3'
+; 训练时默认 --cache_clear_interval 5（每 5 个 epoch 清空 edge 缓存）；禁用则设为 0
+; 训练前手动清空缓存: python SRN_train.py --clear_edge_cache
+; 可选: --use_cosine_lr 启用余弦学习率；--cache_clear_interval 0 禁用自动清空
 python /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/SRN_train.py \
   --images '/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/data/artbench/export_512/train, \
   /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/Edge-JointDiT/dataset/coco2017/train/img, \
@@ -35,9 +38,12 @@ python /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/SR
   --epochs 150 \
   --num_workers 8 \
   --lr 1e-5 \
+  --use_cosine_lr \
+  --cosine_eta_min 1e-6 \
   --val_interval 0 \
   --checkpoint_interval 50000 \
-  --resume_checkpoint '/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/hf_download/sketch-refinement-networks/registrator.pth'
+  --resume_checkpoint '/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/hf_download/sketch-refinement-networks/registrator.pth' \
+  --cache_clear_interval 1 \
 
   --val_root_dir D:/path/to/val_root_dir_with_edge_sketch_mask \
 

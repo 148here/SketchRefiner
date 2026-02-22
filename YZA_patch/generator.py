@@ -206,6 +206,24 @@ def _merge_params(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, A
     return merged
 
 
+def clear_edge_cache() -> None:
+    """
+    清空 edge 缓存（用于训练过程中的「用完即清」或训练前手动清理）。
+    依赖 YZApatch，导入失败时静默跳过。
+    """
+    try:
+        modules = _get_modules()
+        cache_dir = modules["EDGE_CACHE_DIR"]
+        dexined_params = {
+            "threshold": modules["DEXINED_THRESHOLD"],
+            "version": modules["EDGE_CACHE_VERSION"],
+        }
+        manager = modules["get_edge_cache_manager"](cache_dir, dexined_params)
+        manager.clear_cache()
+    except Exception as e:
+        pass  # 静默跳过
+
+
 def generate_triplet(
     image_path: str,
     resolution: Optional[int] = None,

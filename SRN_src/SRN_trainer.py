@@ -14,6 +14,7 @@ from SRN_src.SRN_network import *
 from SRN_src.losses import CrossCorrelationLoss
 
 from SRN_src.utils import *
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
@@ -43,6 +44,11 @@ class SRNTrainer:
             drop_last=True)
         print('')
         print('-' * 50 + 'TRAIN CONFIGURATION' + '-' * 50)
+        dirs = [p.strip() for p in (self.configs.images or '').replace(';', ',').split(',') if p.strip()]
+        print(f"data: {len(dirs)} dirs")
+        for i, d in enumerate(dirs, 1):
+            print(f"  [{i}] {d}")
+        print(f"total images: {len(self.dataset)}")
         print(f"total batches: {len(self.data_loader)}")
         print(f"edge path: {self.configs.edges_prefix}")
         print(f"batch size: {self.configs.batch_size}")
@@ -106,6 +112,19 @@ class SRNTrainer:
         # optimizers
         self.optimizer_rm = torch.optim.Adam(self.registration_module.parameters(), lr=self.configs.lr)
         self.optimizer_em = torch.optim.Adam(self.enhancement_module.parameters(), lr=self.configs.lr)
+
+        # cosine LR scheduler (optional)
+        total_steps = min(
+            self.configs.max_iters // self.configs.batch_size,
+            self.configs.epochs * len(self.data_loader)
+        )
+        if getattr(self.configs, 'use_cosine_lr', False):
+            eta_min = getattr(self.configs, 'cosine_eta_min', 0.0)
+            self.scheduler_rm = CosineAnnealingLR(self.optimizer_rm, T_max=total_steps, eta_min=eta_min)
+            self.scheduler_em = CosineAnnealingLR(self.optimizer_em, T_max=total_steps, eta_min=eta_min)
+        else:
+            self.scheduler_rm = None
+            self.scheduler_em = None
 
         # initialize progressive bar: total iters = min(max_iters, epochs * samples_per_epoch)
         samples_per_epoch = len(self.data_loader) * self.configs.batch_size
@@ -190,6 +209,8 @@ class SRNTrainer:
                 self.optimizer_em.zero_grad()
                 em_loss.backward()
                 self.optimizer_em.step()
+                if self.scheduler_em is not None:
+                    self.scheduler_em.step()
 
                 logs = [em_metrics]
 
@@ -222,6 +243,13 @@ class SRNTrainer:
                     self.save_checkpoint('optimizer_em', self.optimizer_em, self.configs.output, epoch + 1, self.iteration)
 
             print('-' * 50 + f'END OF EPOCH {epoch + 1}' + '-' * 50)
+            if getattr(self.configs, 'cache_clear_interval', 0) > 0 and (epoch + 1) % self.configs.cache_clear_interval == 0:
+                try:
+                    from YZA_patch.generator import clear_edge_cache
+                    clear_edge_cache()
+                    print(f'[SRN] Edge cache cleared after epoch {epoch + 1}')
+                except Exception:
+                    pass
             epoch += 1
             print('')
                 
@@ -286,6 +314,8 @@ class SRNTrainer:
                 self.optimizer_rm.zero_grad()
                 losses.backward()
                 self.optimizer_rm.step()
+                if self.scheduler_rm is not None:
+                    self.scheduler_rm.step()
 
                 logs = [metrics]
 
@@ -315,6 +345,13 @@ class SRNTrainer:
                     self.save_checkpoint('optimizer_rm', self.optimizer_rm, self.configs.output, epoch + 1, self.iteration)
 
             print('-' * 50 + f'END OF EPOCH {epoch + 1}' + '-' * 50)
+            if getattr(self.configs, 'cache_clear_interval', 0) > 0 and (epoch + 1) % self.configs.cache_clear_interval == 0:
+                try:
+                    from YZA_patch.generator import clear_edge_cache
+                    clear_edge_cache()
+                    print(f'[SRN] Edge cache cleared after epoch {epoch + 1}')
+                except Exception:
+                    pass
             epoch += 1
             print('')
 

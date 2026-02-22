@@ -53,15 +53,33 @@ def parse_args():
     parser.add_argument('--sample_interval', default=10000, type=int, help='the interval of saving training samples')
     parser.add_argument('--checkpoint_interval', default=50000, type=int, help='the interval of saving checkpoints')
     parser.add_argument('--size', default=256, type=int, help='resolution of sketches and edges')
+
+    # edge cache
+    parser.add_argument('--clear_edge_cache', action='store_true', help='clear edge cache once and exit (for pre-training cleanup)')
+    parser.add_argument('--cache_clear_interval', default=5, type=int, help='clear edge cache every N epochs (0 to disable)')
+
+    # learning rate scheduler
+    parser.add_argument('--use_cosine_lr', action='store_true', help='use cosine annealing learning rate scheduler')
+    parser.add_argument('--cosine_eta_min', default=0.0, type=float, help='minimum lr for cosine scheduler')
+
     args = parser.parse_args()
 
     return args
 
 
 if __name__ == "__main__":
-    from SRN_src.SRN_trainer import *
-
     configs = parse_args()
+
+    if configs.clear_edge_cache:
+        try:
+            from YZA_patch.generator import clear_edge_cache
+            clear_edge_cache()
+            print('[SRN] Edge cache cleared.')
+        except Exception as e:
+            print(f'[SRN] Failed to clear edge cache: {e}')
+        exit(0)
+
+    from SRN_src.SRN_trainer import *
 
     model = SRNTrainer(configs)
     
