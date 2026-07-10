@@ -14,6 +14,18 @@ import types
 import numpy as np
 from PIL import Image
 
+# Edge-JointDiT/YZApatch still uses deprecated numpy aliases. The training
+# runtime that can import SketchInpainter Stage3 uses a newer numpy, so provide
+# the old aliases before importing those modules.
+for _alias_name, _alias_value in (
+    ("bool", bool),
+    ("int", int),
+    ("float", float),
+    ("complex", complex),
+):
+    if _alias_name not in np.__dict__:
+        setattr(np, _alias_name, _alias_value)
+
 from .config import (
     MASK_PARAMS,
     RESOLUTION,
