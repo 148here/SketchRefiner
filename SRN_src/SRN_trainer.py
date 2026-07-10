@@ -50,6 +50,8 @@ class SRNTrainer:
             print(f"  [{i}] {d}")
         print(f"total images: {len(self.dataset)}")
         print(f"total batches: {len(self.data_loader)}")
+        print(f"image scan mode: {getattr(self.configs, 'image_scan_mode', 'recursive')}")
+        print(f"stage3 split: {getattr(self.configs, 'stage3_split', '')}")
         print(f"edge path: {self.configs.edges_prefix}")
         print(f"batch size: {self.configs.batch_size}")
         print(f"number of workers: {self.configs.num_workers}")
@@ -240,7 +242,8 @@ class SRNTrainer:
                 # save checkpoint
                 if self.iteration % self.configs.checkpoint_interval == 0:
                     self.save_checkpoint('enhancement_module', self.enhancement_module, self.configs.output, epoch + 1, self.iteration)
-                    self.save_checkpoint('optimizer_em', self.optimizer_em, self.configs.output, epoch + 1, self.iteration)
+                    if not getattr(self.configs, 'latest_checkpoint_only', False):
+                        self.save_checkpoint('optimizer_em', self.optimizer_em, self.configs.output, epoch + 1, self.iteration)
 
             print('-' * 50 + f'END OF EPOCH {epoch + 1}' + '-' * 50)
             if getattr(self.configs, 'cache_clear_interval', 0) > 0 and (epoch + 1) % self.configs.cache_clear_interval == 0:
@@ -342,7 +345,8 @@ class SRNTrainer:
                 # save checkpoint
                 if self.iteration % self.configs.checkpoint_interval == 0:
                     self.save_checkpoint('registration_module', self.registration_module, self.configs.output, epoch + 1, self.iteration)
-                    self.save_checkpoint('optimizer_rm', self.optimizer_rm, self.configs.output, epoch + 1, self.iteration)
+                    if not getattr(self.configs, 'latest_checkpoint_only', False):
+                        self.save_checkpoint('optimizer_rm', self.optimizer_rm, self.configs.output, epoch + 1, self.iteration)
 
             print('-' * 50 + f'END OF EPOCH {epoch + 1}' + '-' * 50)
             if getattr(self.configs, 'cache_clear_interval', 0) > 0 and (epoch + 1) % self.configs.cache_clear_interval == 0:
@@ -520,13 +524,17 @@ class SRNTrainer:
             'parameters': model_state,
         }
 
-        save_path = os.path.join(path, 'checkpoints') + f"/checkpoint_epoch{epoch}_iters{iteration}_{name}.pth"
+        if getattr(self.configs, 'latest_checkpoint_only', False):
+            checkpoint_name = getattr(self.configs, 'checkpoint_name', 'latest.pth') or 'latest.pth'
+            save_path = os.path.join(path, 'checkpoints', checkpoint_name)
+        else:
+            save_path = os.path.join(path, 'checkpoints') + f"/checkpoint_epoch{epoch}_iters{iteration}_{name}.pth"
         torch.save(state, save_path)
 
         # log printing
         print(f"model: {name}")
         print(f"iteration: {iteration}")
-        print(f"checkpoints saved at: {os.path.join(self.configs.output, 'samples')}")
+        print(f"checkpoint saved at: {save_path}")
         print('-' * 50 + 'END OF SAVING CHECKPOINTS' + '-' * 50)
         print('')
        

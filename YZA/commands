@@ -1,123 +1,106 @@
-; 环境初始化（一次性）：
-; conda create -n sketchrefiner python=3.6
-; conda activate sketchrefiner
-; pip install torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
-; pip install opencv-python-headless==4.6.0.66
+# SketchRefiner training commands
 
-; export HF_ENDPOINT=https://hf-mirror.com
+## 0. Open a remote shell
 
-; 配置：YZA_patch/config.py
-; USE_COMPLEX_MASK
-; USE_ONLINE_SKETCH_FOR_SIN
+```bash
+ssh zwz_42312@10.193.2.99 -p 30286 -i ~/.ssh/codex_zwz_42312_10_193_2_99_ed25519
+```
 
-screen -S sketchrefiner
+## 1. Enter the project and activate the environment
 
-
-conda activate sketchrefiner
+```bash
 cd /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner
+conda activate sketchrefiner
+```
+
+The scripts default to the second GPU:
+
+```bash
+export CUDA_VISIBLE_DEVICES=1
+```
+
+You can override any path before running a script:
+
+```bash
+export PROJECT_ROOT=/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner
+export SKETCHINPAINTER_ROOT=/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchInpainter
+export DATA_ROOT=/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/data
 export HF_ENDPOINT=https://hf-mirror.com
+```
 
+## 2. Smoke test
 
-=====================
-SRN：训练（在线生成 edge/sketch/mask）
-=====================
-; 单路径或逗号分隔多路径均可，每个目录递归扫描；多目录示例: --images '/path/dir1,/path/dir2,/path/dir3'
-; 训练时默认 --cache_clear_interval 5（每 5 个 epoch 清空 edge 缓存）；禁用则设为 0
-; 训练前手动清空缓存: python SRN_train.py --clear_edge_cache
-; 可选: --use_cosine_lr 启用余弦学习率；--cache_clear_interval 0 禁用自动清空
-python /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/SRN_train.py \
-  --images '/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/data/artbench/export_512/train, \
-  /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/Edge-JointDiT/dataset/coco2017/train/img, \
-  /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/Edge-JointDiT/dataset/processed_images/processed_512_images, \
-  /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/data/sketch2/Object/GT/train, \
-  /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/data/sketch2/Scene/GT/trainInTrain' \
-  --output '/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/output/train/3' \
-  --batch_size 16 \
-  --size 256 \
-  --max_iters 700003 \
-  --epochs 150 \
-  --num_workers 8 \
-  --lr 1e-5 \
-  --use_cosine_lr \
-  --cosine_eta_min 1e-6 \
-  --val_interval 0 \
-  --checkpoint_interval 50000 \
-  --resume_checkpoint '/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/hf_download/sketch-refinement-networks/registrator.pth' \
-  --cache_clear_interval 1 \
+Run this first. It checks Stage3-style dataset scanning, SketchInpainter Stage3
+sketch generation, sample retry/skip, and `checkpoints/latest.pth` saving.
 
-  --val_root_dir D:/path/to/val_root_dir_with_edge_sketch_mask \
+```bash
+bash scripts/01_smoke_srn_stage3_finetune.sh
+```
 
-tensorboard --logdir /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/output/train/2/tb_logs --port 6006 
+Expected smoke output:
 
-=====================
-SRN：训练 EM（从已训练 RM 继续，带 resume）
-=====================
-python SRN_train.py ^
-  --images D:/path/to/train_images ^
-  --output D:/path/to/srn_em_output ^
-  --val_root_dir D:/path/to/val_root_dir_with_edge_sketch_mask ^
-  --batch_size 10 ^
-  --size 256 ^
-  --train_EM ^
-  --RM_checkpoint D:/path/to/trained_RM_checkpoint.pth ^
-  --resume_checkpoint D:/path/to/previous_EM_checkpoint.pth
+```text
+output/train/4_stage3data_sketchinpainter_backend_smoke/checkpoints/latest.pth
+output/train/4_stage3data_sketchinpainter_backend_smoke/samples/
+```
 
-说明：
-- `RM_checkpoint`：固定一个已训练好的 Registration Module；
-- `resume_checkpoint`：仅加载 EM 权重（不恢复优化器/迭代计数），用于从旧的 EM checkpoint 继续训练。
+## 3. Train SRN/RM fine-tune
 
-=====================
-SRN：测试（refine sketches，基于 *_edge/_sketch/_mask）
-=====================
-python SRN_test.py ^
-  --root_dir D:/path/to/test_root_dir_with_edge_sketch_mask ^
-  --output D:/path/to/srn_test_output ^
-  --size 256 ^
-  --RM_checkpoint D:/path/to/RM_checkpoint.pth ^
-  --EM_checkpoint D:/path/to/EM_checkpoint.pth
+This is the current requested training run. It uses:
 
-说明：
-- `root_dir` 下原图需配套 `xxx_edge.ext / xxx_sketch.ext / xxx_mask.ext` 三种文件。
+- datasets: artbench/export_512, coco, mural1
+- split: train
+- batch size: 48
+- size: 256
+- lr: 1e-5
+- cosine eta min: 1e-6
+- epochs: 150
+- max_iters: 50000
+- checkpoint interval: 5000
+- checkpoint file: one overwritten `latest.pth`
+- resume: `hf_download/sketch-refinement-networks/registrator.pth`
 
-=====================
-SIN：训练（共用在线 sketch/mask 逻辑，可选 resume）
-=====================
-python SIN_train.py ^
-  --config_path D:/path/to/SIN_src/configs/example.yml ^
-  --GPU_ids 0 ^
-  --nodes 1 ^
-  --gpus 1 ^
-  --node_rank 0 ^
-  --DDP ^
-  --resume_checkpoint D:/path/to/sin_gen_checkpoint.pth
+```bash
+bash scripts/10_train_srn_stage3_finetune.sh
+```
 
-说明：
-- 是否在线生成 sketch/mask 由 `YZA_patch/config.py` 中 `USE_ONLINE_SKETCH_FOR_SIN` 控制：
-  - True：从原图在线生成 sketch/mask（与 SRN / SDXL 一致）；
-  - False：按 example.yml 中的 `SKETCH_PATH` 从磁盘读取 sketch，mask 使用自由涂抹 `generate_stroke_mask`。
-- `resume_checkpoint`：仅加载 generator / str_encoder 的权重，不恢复优化器与调度器。
+The training output is:
 
-=====================
-SIN：测试（使用 SRN refined sketches 做 inpainting）
-=====================
-python SIN_test.py ^
-  --config_path D:/path/to/SIN_src/configs/example.yml ^
-  --GPU_ids 0 ^
-  --nodes 1 ^
-  --gpus 1 ^
-  --node_rank 0 ^
-  --DDP ^
-  --images D:/path/to/test_images ^
-  --masks D:/path/to/test_masks ^
-  --edges D:/path/to/test_edges ^
-  --sketches D:/path/to/test_input_sketches ^
-  --refined_sketches D:/path/to/srn_refined_sketches ^
-  --output D:/path/to/sin_test_output ^
-  --checkpoint D:/path/to/sin_checkpoint.pth ^
-  --size 256 ^
-  --num_samples 100 ^
-  --seed 0
+```text
+output/train/4_stage3data_sketchinpainter_backend
+```
 
-说明：
-- `refined_sketches`：来自上一阶段 SRN_test 输出的 refined sketches；
-- 其它路径与 README 中的测试协议保持一致。
+## 4. TensorBoard
+
+```bash
+tensorboard \
+  --logdir /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner/output/train/4_stage3data_sketchinpainter_backend/tb_logs \
+  --host 0.0.0.0 \
+  --port 6006
+```
+
+## 5. Later stages
+
+These are prepared but should be run only after checking the previous output.
+
+```bash
+# Train SRN/EM after RM fine-tuning.
+bash scripts/20_train_srn_em.sh
+
+# Train SIN with the configured SIN yaml.
+bash scripts/30_train_sin.sh
+```
+
+If you want to use a different RM checkpoint for EM:
+
+```bash
+export SRN_RM_CHECKPOINT=/path/to/rm_checkpoint.pth
+bash scripts/20_train_srn_em.sh
+```
+
+If you want to resume SIN:
+
+```bash
+export SIN_RESUME_CHECKPOINT=/path/to/sin_checkpoint.pth
+bash scripts/30_train_sin.sh
+```

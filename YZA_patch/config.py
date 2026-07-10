@@ -47,6 +47,15 @@ USE_COMPLEX_MASK: bool = False
 USE_ONLINE_SKETCH_FOR_SIN: bool = True
 
 #
+# sketch backend
+#
+
+# "sketchinpainter_stage3" directly imports SketchInpainter's dataset.makesketch
+# implementation and Stage3 overrides. "yzapatch" keeps the older SketchRefiner
+# online-sketch behavior.
+SKETCH_BACKEND: str = "sketchinpainter_stage3"
+
+#
 # sketch / mask 超参数覆盖
 #
 
@@ -57,7 +66,6 @@ USE_ONLINE_SKETCH_FOR_SIN: bool = True
 
 # 用于覆盖 sketch 生成参数的字典（留空则使用 YZApatch.config.SKETCH_PARAMS）
 SKETCH_PARAMS: Dict[str, Any] = {
-    "sigma_mean": 6,
     # "sigma_std": 2.6,
     # "spatial_smooth_sigma": 2.0,
     # "cp_sigma_mean": 2.1,

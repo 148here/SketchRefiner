@@ -16,7 +16,9 @@ def parse_args():
 
     # data configuration
     ## training data
-    parser.add_argument('--images', type=str, default='', help='paths of ground truth images; multiple dirs separated by comma, each recursively scanned')
+    parser.add_argument('--images', type=str, default='', help='paths of ground truth images; multiple dirs separated by comma')
+    parser.add_argument('--image_scan_mode', default='recursive', choices=['recursive', 'stage3'], help='how to scan --images roots')
+    parser.add_argument('--stage3_split', default='train', type=str, help='split name used when --image_scan_mode stage3')
     parser.add_argument('--edges_prefix', type=str, default='', help='path prefix of input edges')
     parser.add_argument('--output', type=str, default='', help='path of output')
     parser.add_argument('--max_move_lower_bound', type=int, default=30, help='lower bound of the randomize interval of deforming algorithm')
@@ -52,7 +54,10 @@ def parse_args():
     parser.add_argument('--val_interval', default=0, type=int, help='the interval of validation, set to 0 for no validation')
     parser.add_argument('--sample_interval', default=10000, type=int, help='the interval of saving training samples')
     parser.add_argument('--checkpoint_interval', default=50000, type=int, help='the interval of saving checkpoints')
+    parser.add_argument('--latest_checkpoint_only', action='store_true', help='overwrite one checkpoint file instead of writing per-iteration checkpoints')
+    parser.add_argument('--checkpoint_name', default='latest.pth', type=str, help='checkpoint filename when --latest_checkpoint_only is set')
     parser.add_argument('--size', default=256, type=int, help='resolution of sketches and edges')
+    parser.add_argument('--sample_retry_limit', default=0, type=int, help='retry/skip failed online-sketch samples; 0 disables retry')
 
     # edge cache
     parser.add_argument('--clear_edge_cache', action='store_true', help='clear edge cache once and exit (for pre-training cleanup)')

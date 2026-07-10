@@ -23,6 +23,9 @@ import torch
 from torch.utils.data import DataLoader
 
 
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.webp'}
+
+
 # train dataset
 class TrainDataset(torch.utils.data.Dataset):
 
@@ -39,6 +42,8 @@ class TrainDataset(torch.utils.data.Dataset):
         self.max_move = random.randint(configs.max_move_lower_bound, configs.max_move_upper_bound)
 
         self.image_flist = sorted(self.get_files_from_path(self.configs.images))
+        if len(self.image_flist) == 0:
+            raise ValueError("No training images found from --images: %s" % self.configs.images)
 
 
     def __len__(self):
@@ -47,6 +52,32 @@ class TrainDataset(torch.utils.data.Dataset):
 
 
     def __getitem__(self, index):
+        retry_limit = int(getattr(self.configs, "sample_retry_limit", 0) or 0)
+        if generate_triplet is None or retry_limit <= 0:
+            return self._load_item(index)
+
+        last_error = None
+        dataset_size = len(self.image_flist)
+        for attempt in range(max(1, retry_limit)):
+            candidate_index = index if attempt == 0 else random.randint(0, dataset_size - 1)
+            try:
+                return self._load_item(candidate_index)
+            except Exception as e:
+                last_error = e
+                image_path = self.image_flist[candidate_index]
+                print(
+                    "[TrainDataset] skip failed sample attempt=%d/%d path=%s error=%s"
+                    % (attempt + 1, retry_limit, image_path, repr(e))
+                )
+                sys.stdout.flush()
+
+        raise RuntimeError(
+            "Failed to load an online-sketch sample after %d attempts. Last error: %r"
+            % (retry_limit, last_error)
+        )
+
+
+    def _load_item(self, index):
 
         data = {}
         image_path = self.image_flist[index]
@@ -162,16 +193,56 @@ class TrainDataset(torch.utils.data.Dataset):
 
 
     def get_files_from_path(self, path):
-        """Read folders, return complete paths. Supports multiple dirs separated by comma/semicolon, each recursively scanned."""
+        """Read image folders. Comma/semicolon separated roots are supported."""
         if not path or not path.strip():
             return []
         paths = [p.strip() for p in path.replace(';', ',').split(',') if p.strip()]
         ret = []
+        scan_mode = getattr(self.configs, "image_scan_mode", "recursive")
         for p in paths:
-            if osp.isdir(p):
-                for root, dirs, files in os.walk(p):
-                    for f in files:
-                        ret.append(osp.join(root, f))
+            if osp.isfile(p):
+                if self._is_image_file(p):
+                    ret.append(p)
+            elif osp.isdir(p):
+                if scan_mode == "stage3":
+                    ret.extend(self._scan_stage3_root(p))
+                else:
+                    ret.extend(self._scan_image_tree(p))
+        return ret
+
+
+    def _is_image_file(self, path):
+        return osp.splitext(path)[1].lower() in IMAGE_EXTENSIONS
+
+
+    def _scan_image_tree(self, root_dir):
+        ret = []
+        for root, dirs, files in os.walk(root_dir):
+            for f in files:
+                path = osp.join(root, f)
+                if self._is_image_file(path):
+                    ret.append(path)
+        return ret
+
+
+    def _scan_stage3_root(self, dataset_root):
+        split = str(getattr(self.configs, "stage3_split", "train") or "train")
+        split_root = osp.join(dataset_root, split)
+        if not osp.isdir(split_root):
+            split_root = dataset_root
+
+        image_dirs = []
+        for root, dirs, files in os.walk(split_root):
+            if osp.basename(root).lower() == "images":
+                image_dirs.append(root)
+
+        ret = []
+        for image_dir in image_dirs:
+            ret.extend(self._scan_image_tree(image_dir))
+
+        if not ret:
+            ret.extend(self._scan_image_tree(split_root))
+
         return ret
 
 
