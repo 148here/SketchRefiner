@@ -6,7 +6,7 @@ source "${SCRIPT_DIR}/00_env.sh"
 
 cd "${PROJECT_ROOT}"
 
-python SRN_train.py \
+run_python SRN_train.py \
   --images "${STAGE3_IMAGE_ROOTS}" \
   --image_scan_mode stage3 \
   --stage3_split train \

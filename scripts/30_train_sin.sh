@@ -15,7 +15,7 @@ if [[ ! -f "${SIN_CONFIG_PATH}" ]]; then
 fi
 
 if [[ -n "${SIN_RESUME_CHECKPOINT}" ]]; then
-  python SIN_train.py \
+  run_python SIN_train.py \
     --config_path "${SIN_CONFIG_PATH}" \
     --GPU_ids "${CUDA_VISIBLE_DEVICES}" \
     --nodes 1 \
@@ -24,7 +24,7 @@ if [[ -n "${SIN_RESUME_CHECKPOINT}" ]]; then
     --DDP \
     --resume_checkpoint "${SIN_RESUME_CHECKPOINT}"
 else
-  python SIN_train.py \
+  run_python SIN_train.py \
     --config_path "${SIN_CONFIG_PATH}" \
     --GPU_ids "${CUDA_VISIBLE_DEVICES}" \
     --nodes 1 \

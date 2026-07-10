@@ -10,7 +10,7 @@ ssh zwz_42312@10.193.2.99 -p 30286 -i ~/.ssh/codex_zwz_42312_10_193_2_99_ed25519
 
 ```bash
 cd /cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner
-conda activate sketchrefiner
+conda activate base
 ```
 
 The scripts default to the second GPU:
@@ -25,8 +25,14 @@ You can override any path before running a script:
 export PROJECT_ROOT=/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchRefiner
 export SKETCHINPAINTER_ROOT=/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchInpainter
 export DATA_ROOT=/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/data
+export CONDA_ENV_NAME=sketchinpainter-train
 export HF_ENDPOINT=https://hf-mirror.com
 ```
+
+Note: the old `sketchrefiner` env uses Python 3.6 and cannot directly import
+SketchInpainter's Stage3 `dataset.makesketch` package. The scripts therefore
+default to `conda run -n sketchinpainter-train python`, which was verified with
+Python 3.10, torch, cv2, tensorboard, and the Stage3 sketch backend.
 
 ## 2. Smoke test
 

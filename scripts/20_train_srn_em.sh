@@ -15,7 +15,7 @@ if [[ ! -f "${SRN_RM_CHECKPOINT}" ]]; then
   exit 1
 fi
 
-python SRN_train.py \
+run_python SRN_train.py \
   --images "${STAGE3_IMAGE_ROOTS}" \
   --image_scan_mode stage3 \
   --stage3_split train \

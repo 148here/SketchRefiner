@@ -9,6 +9,8 @@ export SKETCHINPAINTER_ROOT="${SKETCHINPAINTER_ROOT:-$(cd "${PROJECT_ROOT}/.." &
 export DATA_ROOT="${DATA_ROOT:-/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/data}"
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-1}"
 export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
+export CONDA_ENV_NAME="${CONDA_ENV_NAME:-sketchinpainter-train}"
+export USE_CONDA_RUN="${USE_CONDA_RUN:-1}"
 
 export ARTBENCH_ROOT="${ARTBENCH_ROOT:-${DATA_ROOT}/artbench/export_512}"
 export COCO_ROOT="${COCO_ROOT:-${DATA_ROOT}/coco}"
@@ -23,3 +25,12 @@ echo "PROJECT_ROOT=${PROJECT_ROOT}"
 echo "SKETCHINPAINTER_ROOT=${SKETCHINPAINTER_ROOT}"
 echo "DATA_ROOT=${DATA_ROOT}"
 echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
+echo "CONDA_ENV_NAME=${CONDA_ENV_NAME}"
+
+run_python() {
+  if [[ "${USE_CONDA_RUN}" == "1" ]]; then
+    conda run -n "${CONDA_ENV_NAME}" python "$@"
+  else
+    python "$@"
+  fi
+}
