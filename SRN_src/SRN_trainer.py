@@ -139,6 +139,22 @@ class SRNTrainer:
             stateful_metrics=['epoch', 'iter', 'l1_loss', 'cc_loss'],
             verbose=1
         )
+        self._interval_next_iters = {}
+
+    def _interval_reached(self, name, interval):
+        interval = int(interval or 0)
+        if interval <= 0:
+            return False
+
+        next_iter = self._interval_next_iters.get(name, interval)
+        if self.iteration < next_iter:
+            self._interval_next_iters[name] = next_iter
+            return False
+
+        while next_iter <= self.iteration:
+            next_iter += interval
+        self._interval_next_iters[name] = next_iter
+        return True
 
     # train enhancement module
     def train_EM(self):
@@ -226,7 +242,7 @@ class SRNTrainer:
                     sys.stdout.flush()
 
                 # visualization training samples
-                if self.iteration % self.configs.sample_interval == 0:
+                if self._interval_reached('em_sample', self.configs.sample_interval):
                     self.visualize(data=data, keys=['image', 'masked_image', 'visualize_sketch', 'edge', 'rm_out', 'em_out'], path=self.configs.output, epoch=epoch, iteration=self.iteration)
                     print('')
                     print('-' * 50 + f"SAVING SAMPLES OF ITERATION {self.iteration}" + '-' * 50)
@@ -236,11 +252,11 @@ class SRNTrainer:
 
                 # validation
                 # set `self.configs.val_interval` > 0 for validation
-                if self.configs.val_interval > 0 and self.iteration % self.configs.val_interval == 0:
+                if self._interval_reached('em_val', self.configs.val_interval):
                     self.val_with_two_stage()
 
                 # save checkpoint
-                if self.iteration % self.configs.checkpoint_interval == 0:
+                if self._interval_reached('em_checkpoint', self.configs.checkpoint_interval):
                     self.save_checkpoint('enhancement_module', self.enhancement_module, self.configs.output, epoch + 1, self.iteration)
                     if not getattr(self.configs, 'latest_checkpoint_only', False):
                         self.save_checkpoint('optimizer_em', self.optimizer_em, self.configs.output, epoch + 1, self.iteration)
@@ -329,7 +345,7 @@ class SRNTrainer:
                 self.progbar.add(1, values=logs)
                 
                 # visualization training samples
-                if self.iteration % self.configs.sample_interval == 0:
+                if self._interval_reached('rm_sample', self.configs.sample_interval):
                     self.visualize(data=data, keys=['image', 'masked_image', 'visualize_sketch', 'edge', 'out'], path=self.configs.output, epoch=epoch, iteration=self.iteration)
                     print('')
                     print('-' * 50 + f"SAVING SAMPLES OF ITERATION {self.iteration}" + '-' * 50)
@@ -339,11 +355,11 @@ class SRNTrainer:
 
                 # validation
                 # set `self.configs.val_interval` > 0 for validation
-                if self.configs.val_interval > 0 and self.iteration % self.configs.val_interval == 0:
+                if self._interval_reached('rm_val', self.configs.val_interval):
                     self.val()
 
                 # save checkpoint
-                if self.iteration % self.configs.checkpoint_interval == 0:
+                if self._interval_reached('rm_checkpoint', self.configs.checkpoint_interval):
                     self.save_checkpoint('registration_module', self.registration_module, self.configs.output, epoch + 1, self.iteration)
                     if not getattr(self.configs, 'latest_checkpoint_only', False):
                         self.save_checkpoint('optimizer_rm', self.optimizer_rm, self.configs.output, epoch + 1, self.iteration)

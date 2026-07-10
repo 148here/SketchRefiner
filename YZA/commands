@@ -26,6 +26,7 @@ export PROJECT_ROOT=/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/Ske
 export SKETCHINPAINTER_ROOT=/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/SketchInpainter
 export DATA_ROOT=/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/data
 export CONDA_ENV_NAME=sketchinpainter-train
+export SRN_NUM_WORKERS=0
 export HF_ENDPOINT=https://hf-mirror.com
 ```
 
@@ -33,6 +34,9 @@ Note: the old `sketchrefiner` env uses Python 3.6 and cannot directly import
 SketchInpainter's Stage3 `dataset.makesketch` package. The scripts therefore
 default to `conda run -n sketchinpainter-train python`, which was verified with
 Python 3.10, torch, cv2, tensorboard, and the Stage3 sketch backend.
+
+The scripts use `conda run --no-capture-output` so training progress is printed
+live instead of being buffered until the Python process exits.
 
 ## 2. Smoke test
 
@@ -65,6 +69,8 @@ This is the current requested training run. It uses:
 - checkpoint interval: 5000
 - checkpoint file: one overwritten `latest.pth`
 - resume: `hf_download/sketch-refinement-networks/registrator.pth`
+- workers: `SRN_NUM_WORKERS`, default `0`; increase only after confirming that
+  online edge/sketch generation is stable in worker processes.
 
 ```bash
 bash scripts/10_train_srn_stage3_finetune.sh

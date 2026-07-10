@@ -11,6 +11,7 @@ export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-1}"
 export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
 export CONDA_ENV_NAME="${CONDA_ENV_NAME:-sketchinpainter-train}"
 export USE_CONDA_RUN="${USE_CONDA_RUN:-1}"
+export SRN_NUM_WORKERS="${SRN_NUM_WORKERS:-0}"
 
 export ARTBENCH_ROOT="${ARTBENCH_ROOT:-${DATA_ROOT}/artbench/export_512}"
 export COCO_ROOT="${COCO_ROOT:-${DATA_ROOT}/coco}"
@@ -26,10 +27,11 @@ echo "SKETCHINPAINTER_ROOT=${SKETCHINPAINTER_ROOT}"
 echo "DATA_ROOT=${DATA_ROOT}"
 echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
 echo "CONDA_ENV_NAME=${CONDA_ENV_NAME}"
+echo "SRN_NUM_WORKERS=${SRN_NUM_WORKERS}"
 
 run_python() {
   if [[ "${USE_CONDA_RUN}" == "1" ]]; then
-    conda run -n "${CONDA_ENV_NAME}" python "$@"
+    conda run --no-capture-output -n "${CONDA_ENV_NAME}" python "$@"
   else
     python "$@"
   fi
