@@ -12,6 +12,8 @@ export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
 export CONDA_ENV_NAME="${CONDA_ENV_NAME:-sketchinpainter-train}"
 export USE_CONDA_RUN="${USE_CONDA_RUN:-1}"
 export SRN_NUM_WORKERS="${SRN_NUM_WORKERS:-0}"
+export MKL_THREADING_LAYER="${MKL_THREADING_LAYER:-GNU}"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
 
 export ARTBENCH_ROOT="${ARTBENCH_ROOT:-${DATA_ROOT}/artbench/export_512}"
 export COCO_ROOT="${COCO_ROOT:-${DATA_ROOT}/coco}"
@@ -28,6 +30,8 @@ echo "DATA_ROOT=${DATA_ROOT}"
 echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
 echo "CONDA_ENV_NAME=${CONDA_ENV_NAME}"
 echo "SRN_NUM_WORKERS=${SRN_NUM_WORKERS}"
+echo "MKL_THREADING_LAYER=${MKL_THREADING_LAYER}"
+echo "OMP_NUM_THREADS=${OMP_NUM_THREADS}"
 
 run_python() {
   if [[ "${USE_CONDA_RUN}" == "1" ]]; then

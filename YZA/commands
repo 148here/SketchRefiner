@@ -27,6 +27,8 @@ export SKETCHINPAINTER_ROOT=/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312
 export DATA_ROOT=/cpfs01/projects-SSD/cfff-27504eab520e_SSD/zwz_42312/yza/data
 export CONDA_ENV_NAME=sketchinpainter-train
 export SRN_NUM_WORKERS=0
+export MKL_THREADING_LAYER=GNU
+export OMP_NUM_THREADS=1
 export HF_ENDPOINT=https://hf-mirror.com
 ```
 
@@ -37,6 +39,10 @@ Python 3.10, torch, cv2, tensorboard, and the Stage3 sketch backend.
 
 The scripts use `conda run --no-capture-output` so training progress is printed
 live instead of being buffered until the Python process exits.
+
+`MKL_THREADING_LAYER=GNU` avoids the `mkl-service ... incompatible with
+libgomp.so.1` error that can appear when torch/cv2/sketch utilities load OpenMP
+before numpy/MKL.
 
 ## 2. Smoke test
 

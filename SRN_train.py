@@ -1,5 +1,11 @@
 import argparse
 import multiprocessing
+import os
+
+# Keep numpy/MKL compatible with libraries that load libgomp first.
+# This must be set before importing torch/cv2/numpy-heavy modules.
+os.environ.setdefault("MKL_THREADING_LAYER", "GNU")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 # 设置 multiprocessing start method 为 'spawn'，避免 CUDA 在 fork 子进程中重新初始化的问题
 # 必须在导入 torch 之前设置
