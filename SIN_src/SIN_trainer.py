@@ -56,18 +56,21 @@ class SINTrainer:
 
     def save(self, epoch, iteration):
         if self.global_rank == 0:
+            self.inpaint_model.iteration = iteration
             self.inpaint_model.save(epoch, iteration)
 
     def train(self):
         epoch = 0
 
+        num_workers = int(getattr(self.config, "NUM_WORKERS", 8) or 0)
+
         if self.config.DDP:
-            train_loader = DataLoader(self.train_dataset, shuffle=True, pin_memory=True,
+            train_loader = DataLoader(self.train_dataset, shuffle=False, pin_memory=True,
                                       batch_size=self.config.BATCH_SIZE // self.config.world_size,
-                                      num_workers=8, sampler=self.train_sampler)
+                                      num_workers=num_workers, sampler=self.train_sampler)
         else:
             train_loader = DataLoader(self.train_dataset, pin_memory=True,
-                                      batch_size=self.config.BATCH_SIZE, num_workers=8,
+                                      batch_size=self.config.BATCH_SIZE, num_workers=num_workers,
                                       sampler=self.train_sampler)
         keep_training = True
         max_iteration = int(float((self.config.MAX_ITERS)))
@@ -165,10 +168,11 @@ class SINTrainer:
         if self.config.DDP:
             val_loader = DataLoader(self.val_dataset, shuffle=False, pin_memory=True,
                                     batch_size=self.config.BATCH_SIZE // self.config.world_size,  ## BS of each GPU
-                                    num_workers=8)
+                                    num_workers=int(getattr(self.config, "NUM_WORKERS", 8) or 0))
         else:
             val_loader = DataLoader(self.val_dataset, shuffle=False, pin_memory=True,
-                                    batch_size=self.config.BATCH_SIZE, num_workers=8)
+                                    batch_size=self.config.BATCH_SIZE,
+                                    num_workers=int(getattr(self.config, "NUM_WORKERS", 8) or 0))
 
         total = len(self.val_dataset)
 

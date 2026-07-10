@@ -32,6 +32,7 @@ def main_worker(gpu, args):
     config.GPU_ids = args.GPU_ids
     config.DDP = args.DDP
     # resume 仅加载模型权重，不恢复优化器状态
+    # Resume model weights only; optimizers and schedulers start from config.
     config.RESUME_CHECKPOINT = getattr(args, "resume_checkpoint", "")
     if config.DDP:
         config.world_size = args.world_size

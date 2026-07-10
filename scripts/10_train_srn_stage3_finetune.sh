@@ -13,7 +13,7 @@ run_python SRN_train.py \
   --output "${SRN_STAGE3_OUTPUT}" \
   --batch_size 48 \
   --size 256 \
-  --max_iters 50000 \
+  --max_iters 100000 \
   --epochs 150 \
   --num_workers "${SRN_NUM_WORKERS}" \
   --lr 1e-5 \

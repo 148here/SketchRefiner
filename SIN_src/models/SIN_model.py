@@ -98,6 +98,7 @@ class BaseInpaintingTrainingModule(nn.Module):
 
         # resume：仅加载模型权重，不恢复优化器和调度器状态
         resume_path = getattr(self.config, "RESUME_CHECKPOINT", "")
+        resume_path = getattr(self.config, "RESUME_CHECKPOINT", "")
         if (not test) and resume_path:
             if self.global_rank == 0:
                 print(f"Resuming SIN generator/encoder weights from: {resume_path}")
@@ -110,8 +111,14 @@ class BaseInpaintingTrainingModule(nn.Module):
         save_dir = os.path.join(self.config.OUTPUT_DIR, "checkpoints")
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-        self.gen_weights_path = os.path.join(save_dir, f'epoch{epoch}_iteration{iteration}_gen.pth')
-        self.dis_weights_path = os.path.join(save_dir, f'epoch{epoch}_iteration{iteration}_dis.pth')
+        if getattr(self.config, "LATEST_CHECKPOINT_ONLY", False):
+            gen_name = getattr(self.config, "GEN_CHECKPOINT_NAME", "latest_gen.pth") or "latest_gen.pth"
+            dis_name = getattr(self.config, "DIS_CHECKPOINT_NAME", "latest_dis.pth") or "latest_dis.pth"
+            self.gen_weights_path = os.path.join(save_dir, gen_name)
+            self.dis_weights_path = os.path.join(save_dir, dis_name)
+        else:
+            self.gen_weights_path = os.path.join(save_dir, f'epoch{epoch}_iteration{iteration}_gen.pth')
+            self.dis_weights_path = os.path.join(save_dir, f'epoch{epoch}_iteration{iteration}_dis.pth')
         print('\nsaving %s...\n' % self.name)
         raw_model = self.generator.module if hasattr(self.generator, "module") else self.generator
         raw_encoder = self.str_encoder.module if hasattr(self.str_encoder, "module") else self.str_encoder

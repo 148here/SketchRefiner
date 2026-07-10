@@ -39,4 +39,8 @@ DEFAULT_CONFIG = {
     'SAMPLE_SIZE': 12,              # number of images to sample
     'EVAL_INTERVAL': 0,             # how many iterations to wait before model evaluation (0: never)
     'LOG_INTERVAL': 10,             # how many iterations to wait before logging training status (0: never)
+    'NUM_WORKERS': 8,               # dataloader workers
+    'LATEST_CHECKPOINT_ONLY': False,
+    'GEN_CHECKPOINT_NAME': 'latest_gen.pth',
+    'DIS_CHECKPOINT_NAME': 'latest_dis.pth',
 }

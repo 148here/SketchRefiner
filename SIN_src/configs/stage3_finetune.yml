@@ -1,0 +1,83 @@
+SEED: 1
+No_Bar: False
+
+size: 256
+str_size: 256
+round: 64
+fix_256: True
+
+TRAIN_FLIST: ""
+SKETCH_PATH: ""
+OUTPUT_DIR: ""
+
+VAL_FLIST: ""
+VAL_MASK_PATH: ""
+VAL_SKETCH_PATH: ""
+
+BATCH_SIZE: 25
+INPUT_SIZE: 256
+MAX_ITERS: 100000
+
+SAVE_INTERVAL: 5000
+SAMPLE_INTERVAL: 5000
+SAMPLE_SIZE: 1
+EVAL_INTERVAL: 0
+LOG_INTERVAL: 1000
+NUM_WORKERS: 0
+
+LATEST_CHECKPOINT_ONLY: True
+GEN_CHECKPOINT_NAME: latest_gen.pth
+DIS_CHECKPOINT_NAME: latest_dis.pth
+
+run_title: stage3_finetune
+
+training_model:
+  kind: default
+losses:
+  l1:
+    weight_missing: 0
+    weight_known: 10
+  perceptual:
+    weight: 0
+  adversarial:
+    weight: 10
+    gp_coef: 0.001
+    mask_as_fake_target: true
+    allow_scale_mask: true
+  feature_matching:
+    weight: 100
+  resnet_pl:
+    weight: 0
+    weights_path: ""
+optimizers:
+  warmup_steps: 2000
+  generator:
+    kind: adam
+    lr: 3.0e-4
+  discriminator:
+    kind: adam
+    lr: 1.0e-4
+  decay_steps: 400000
+  decay_rate: 0.5
+
+generator:
+  input_nc: 4
+  output_nc: 3
+  ngf: 64
+  n_downsampling: 3
+  n_blocks: 9
+  add_out_act: sigmoid
+  init_conv_kwargs:
+    ratio_gin: 0
+    ratio_gout: 0
+    enable_lfu: false
+  downsample_conv_kwargs:
+    ratio_gin: 0
+    ratio_gout: 0
+    enable_lfu: false
+  resnet_conv_kwargs:
+    ratio_gin: 0.75
+    ratio_gout: 0.75
+    enable_lfu: false
+discriminator:
+  input_nc: 3
