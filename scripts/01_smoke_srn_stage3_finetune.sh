@@ -13,7 +13,7 @@ run_python SRN_train.py \
   --output "${SRN_STAGE3_SMOKE_OUTPUT}" \
   --batch_size 1 \
   --size 256 \
-  --max_iters 0 \
+  --max_iters 1 \
   --epochs 1 \
   --num_workers 0 \
   --lr 1e-5 \

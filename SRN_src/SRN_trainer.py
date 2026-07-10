@@ -116,10 +116,10 @@ class SRNTrainer:
         self.optimizer_em = torch.optim.Adam(self.enhancement_module.parameters(), lr=self.configs.lr)
 
         # cosine LR scheduler (optional)
-        total_steps = min(
+        total_steps = max(1, min(
             self.configs.max_iters // self.configs.batch_size,
             self.configs.epochs * len(self.data_loader)
-        )
+        ))
         if getattr(self.configs, 'use_cosine_lr', False):
             eta_min = getattr(self.configs, 'cosine_eta_min', 0.0)
             self.scheduler_rm = CosineAnnealingLR(self.optimizer_rm, T_max=total_steps, eta_min=eta_min)
