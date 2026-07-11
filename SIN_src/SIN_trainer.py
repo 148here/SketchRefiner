@@ -15,6 +15,13 @@ def edge_to_visual(tensor):
     return 1.0 - torch.clamp(tensor, 0.0, 1.0)
 
 
+def metric_value(metrics, key, default=0.0):
+    value = metrics.get(key, default)
+    if torch.is_tensor(value):
+        value = value.detach().mean().item()
+    return float(value)
+
+
 # Sketch-modulated Inpainting Network (SIN)
 class SINTrainer:
     def __init__(self, config, gpu, rank, test=False):
@@ -121,15 +128,15 @@ class SINTrainer:
 
                     # write tensorboard logs
                     dis_losses, gen_losses = logs
-                    self.writer.add_scalar("gen_l1", gen_losses['gen_l1'], iteration)
-                    self.writer.add_scalar("gen_adv", gen_losses['gen_adv'], iteration)
-                    self.writer.add_scalar("gen_fm", gen_losses['gen_fm'], iteration)
-                    self.writer.add_scalar("gen_resnet_pl", gen_losses['gen_resnet_pl'], iteration)
-                    self.writer.add_scalar("gen_total_loss", gen_losses['gen_total_loss'], iteration)
+                    self.writer.add_scalar("gen_l1", metric_value(gen_losses, 'gen_l1'), iteration)
+                    self.writer.add_scalar("gen_adv", metric_value(gen_losses, 'gen_adv'), iteration)
+                    self.writer.add_scalar("gen_fm", metric_value(gen_losses, 'gen_fm'), iteration)
+                    self.writer.add_scalar("gen_resnet_pl", metric_value(gen_losses, 'gen_resnet_pl'), iteration)
+                    self.writer.add_scalar("gen_total_loss", metric_value(gen_losses, 'gen_total_loss'), iteration)
 
-                    self.writer.add_scalar("dis_real_loss", dis_losses['dis_real_loss'], iteration)
-                    self.writer.add_scalar("dis_fake_loss", dis_losses['dis_fake_loss'], iteration)
-                    self.writer.add_scalar("grad_penalty", dis_losses['grad_penalty'], iteration)
+                    self.writer.add_scalar("dis_real_loss", metric_value(dis_losses, 'dis_real_loss'), iteration)
+                    self.writer.add_scalar("dis_fake_loss", metric_value(dis_losses, 'dis_fake_loss'), iteration)
+                    self.writer.add_scalar("grad_penalty", metric_value(dis_losses, 'grad_penalty'), iteration)
 
                     if iteration >= max_iteration:
                         keep_training = False
