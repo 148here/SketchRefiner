@@ -61,7 +61,8 @@ def main_worker(gpu, args):
 
 
 def cleanup():
-    dist.destroy_process_group()
+    if dist.is_available() and dist.is_initialized():
+        dist.destroy_process_group()
 
 
 if __name__ == "__main__":

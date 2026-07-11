@@ -21,6 +21,8 @@ try:
         USE_ONLINE_SKETCH_FOR_SIN,
         SKETCH_PARAMS,
         MASK_PARAMS,
+        EXTERNAL_EDGE_POLARITY,
+        MODEL_EDGE_POLARITY,
     )
     from YZA_patch.generator import generate_triplet
 except ImportError:
@@ -29,6 +31,8 @@ except ImportError:
     USE_ONLINE_SKETCH_FOR_SIN = False
     SKETCH_PARAMS = {}
     MASK_PARAMS = {}
+    EXTERNAL_EDGE_POLARITY = "black_on_white"
+    MODEL_EDGE_POLARITY = "white_on_black"
     generate_triplet = None
 
 
@@ -90,6 +94,47 @@ def binary_value(tensor, thresh):
     tensor[~indice] = 0.0
 
     return tensor
+
+
+def _normalize_gray01(image):
+    array = np.asarray(image)
+    if array.ndim == 3:
+        array = cv2.cvtColor(array, cv2.COLOR_RGB2GRAY)
+    array = array.astype(np.float32)
+    if array.size and array.max() > 1.0:
+        array = array / 255.0
+    return array
+
+
+def _binarize_edge_like(image, threshold):
+    binary = (_normalize_gray01(image) > float(threshold)).astype(np.float32)
+    return np.expand_dims(binary, axis=-1)
+
+
+def _convert_line_polarity(binary, source_polarity, target_polarity):
+    source = str(source_polarity or "black_on_white").strip().lower()
+    target = str(target_polarity or "white_on_black").strip().lower()
+    valid = {"black_on_white", "white_on_black"}
+    if source not in valid:
+        raise ValueError("Unsupported source edge polarity: %s" % source_polarity)
+    if target not in valid:
+        raise ValueError("Unsupported target edge polarity: %s" % target_polarity)
+    if source == target:
+        return binary.astype(np.float32)
+    return (1.0 - binary).astype(np.float32)
+
+
+def _external_edge_to_model(image, threshold):
+    binary = _binarize_edge_like(image, threshold)
+    return _convert_line_polarity(binary, EXTERNAL_EDGE_POLARITY, MODEL_EDGE_POLARITY)
+
+
+def _edge_to_three_channels(image):
+    if image.ndim == 2:
+        image = np.expand_dims(image, axis=-1)
+    if image.shape[2] == 1:
+        image = np.repeat(image, 3, axis=2)
+    return image.astype(np.float32)
 
 
 class TrainDataset(torch.utils.data.Dataset):
@@ -215,7 +260,7 @@ class TrainDataset(torch.utils.data.Dataset):
             # sketch：保持与原实现一致的 resize + 二值化
             sketch = sketch_np
             sketch = cv2.resize(sketch, [size, size])
-            _, sketch = cv2.threshold(sketch, thresh=127.5, maxval=255., type=cv2.THRESH_BINARY)
+            sketch = _edge_to_three_channels(_external_edge_to_model(sketch, 0.5))
         else:
             mask = generate_stroke_mask([size, size])
             _, mask = cv2.threshold(mask, 0.5, 1.0, cv2.THRESH_BINARY)
@@ -223,7 +268,7 @@ class TrainDataset(torch.utils.data.Dataset):
             sketch = cv2.imread(os.path.join(self.sketch_path, name))
             # sketch = cv2.imread(prefix + name + '_edge.png')
             sketch = cv2.resize(sketch, [size, size])
-            _, sketch = cv2.threshold(sketch, thresh=127.5, maxval=255., type=cv2.THRESH_BINARY)
+            sketch = _edge_to_three_channels(_external_edge_to_model(sketch, 0.5))
 
 
         batch = dict()

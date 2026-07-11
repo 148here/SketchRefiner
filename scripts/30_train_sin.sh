@@ -146,7 +146,6 @@ SIN_ARGS=(
   --nodes 1
   --gpus 1
   --node_rank 0
-  --DDP
 )
 
 if [[ -n "${SIN_RESUME_CHECKPOINT}" ]]; then

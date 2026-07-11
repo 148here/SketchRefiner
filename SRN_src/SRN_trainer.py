@@ -22,6 +22,11 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 torch.autograd.set_detect_anomaly(True)
 
+
+def edge_to_visual(tensor):
+    return 1.0 - torch.clamp(tensor, 0.0, 1.0)
+
+
 # Sketch Refinement Network (SRN)
 class SRNTrainer:
     def __init__(self, configs):
@@ -182,7 +187,8 @@ class SRNTrainer:
                                     
                 data['sketch'] = data['sketch'] * data['mask'] + data['edge'] * (1 - data['mask'])
                     
-                data['visualize_sketch'] = data['sketch']
+                data['visualize_sketch'] = edge_to_visual(data['sketch'])
+                data['visualize_edge'] = edge_to_visual(data['edge'])
 
                 # input of registration module
                 x = torch.cat([masked_image, data['mask'], data['sketch']], dim=1)
@@ -191,7 +197,8 @@ class SRNTrainer:
                 data['rm_out'] = self.registration_module(x)
                 data['rm_out'] = torch.clamp(data['rm_out'], 0.0, 1.0)
             
-                data['em_in'] = data['rm_out']
+                data['visualize_rm_out'] = edge_to_visual(data['rm_out'] * data['mask'] + data['edge'] * (1 - data['mask']))
+                data['em_in'] = data['rm_out'].clone()
 
                 # input of enhancement module
                 thresh = torch.mean(data['em_in'])
@@ -203,6 +210,7 @@ class SRNTrainer:
                 data['em_out'] = self.enhancement_module(em_x)
                 data['em_out'] = torch.clamp(data['em_out'], 0.0, 1.0)
                 data['em_out'] = data['em_out'] * data['mask'] + data['edge'] * (1 - data['mask'])
+                data['visualize_em_out'] = edge_to_visual(data['em_out'])
 
                 # calculate loss value and update tensorboard logs
 
@@ -243,7 +251,7 @@ class SRNTrainer:
 
                 # visualization training samples
                 if self._interval_reached('em_sample', self.configs.sample_interval):
-                    self.visualize(data=data, keys=['image', 'masked_image', 'visualize_sketch', 'edge', 'rm_out', 'em_out'], path=self.configs.output, epoch=epoch, iteration=self.iteration)
+                    self.visualize(data=data, keys=['image', 'masked_image', 'visualize_sketch', 'visualize_edge', 'visualize_rm_out', 'visualize_em_out'], path=self.configs.output, epoch=epoch, iteration=self.iteration)
                     print('')
                     print('-' * 50 + f"SAVING SAMPLES OF ITERATION {self.iteration}" + '-' * 50)
                     print(f"samples saved at: {os.path.join(self.configs.output, 'samples')}")
@@ -299,7 +307,8 @@ class SRNTrainer:
                 data['masked_image'] = masked_image
                 
                 data['sketch'] = data['sketch'] * data['mask'] + data['edge'] * (1 - data['mask'])
-                data['visualize_sketch'] = data['sketch']
+                data['visualize_sketch'] = edge_to_visual(data['sketch'])
+                data['visualize_edge'] = edge_to_visual(data['edge'])
 
                 #  input
                 x = torch.cat([masked_image, data['mask'], data['sketch']], dim=1)
@@ -309,6 +318,7 @@ class SRNTrainer:
                 
                 data['out'] = torch.clamp(data['out'], 0.0, 1.0)
                 data['out'] = data['out'] * data['mask'] + data['edge'] * (1 - data['mask'])
+                data['visualize_out'] = edge_to_visual(data['out'])
 
                 losses = 0.0
                 metrics = {}
@@ -346,7 +356,7 @@ class SRNTrainer:
                 
                 # visualization training samples
                 if self._interval_reached('rm_sample', self.configs.sample_interval):
-                    self.visualize(data=data, keys=['image', 'masked_image', 'visualize_sketch', 'edge', 'out'], path=self.configs.output, epoch=epoch, iteration=self.iteration)
+                    self.visualize(data=data, keys=['image', 'masked_image', 'visualize_sketch', 'visualize_edge', 'visualize_out'], path=self.configs.output, epoch=epoch, iteration=self.iteration)
                     print('')
                     print('-' * 50 + f"SAVING SAMPLES OF ITERATION {self.iteration}" + '-' * 50)
                     print(f"samples saved at: {os.path.join(self.configs.output, 'samples')}")

@@ -56,6 +56,17 @@ USE_ONLINE_SKETCH_FOR_SIN: bool = True
 SKETCH_BACKEND: str = "sketchinpainter_stage3"
 
 #
+# edge / sketch polarity
+#
+
+# Stage3/SketchInpainter produces readable black strokes on a white background.
+# SketchRefiner weights are trained against the internal convention below:
+# line pixels are 1.0 and background pixels are 0.0.
+EXTERNAL_EDGE_POLARITY: str = "black_on_white"
+MODEL_EDGE_POLARITY: str = "white_on_black"
+VISUAL_EDGE_POLARITY: str = "black_on_white"
+
+#
 # sketch / mask 超参数覆盖
 #
 

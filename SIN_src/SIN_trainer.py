@@ -10,6 +10,11 @@ from SIN_src.dataset import *
 from SIN_src.models.SIN_model import *
 from SIN_src.utils import Progbar, create_dir, stitch_images, SampleEdgeLineLogits
 
+
+def edge_to_visual(tensor):
+    return 1.0 - torch.clamp(tensor, 0.0, 1.0)
+
+
 # Sketch-modulated Inpainting Network (SIN)
 class SINTrainer:
     def __init__(self, config, gpu, rank, test=False):
@@ -112,6 +117,7 @@ class SINTrainer:
 
                     # train
                     outputs, gen_loss, dis_loss, logs, batch = self.inpaint_model.process(items)
+                    batch['sketch_visual'] = edge_to_visual(batch['sketch'])
 
                     # write tensorboard logs
                     dis_losses, gen_losses = logs
@@ -144,7 +150,7 @@ class SINTrainer:
 
                     # sample model at checkpoints
                     if self.config.SAMPLE_INTERVAL and iteration > 0 and iteration % self.config.SAMPLE_INTERVAL == 0 and self.global_rank == 0:
-                        self.visualize(batch, keys=['image', 'masked_image', 'sketch', 'inpainted'], path=self.config.OUTPUT_DIR, epoch=epoch, iteration=iteration)
+                        self.visualize(batch, keys=['image', 'masked_image', 'sketch_visual', 'inpainted'], path=self.config.OUTPUT_DIR, epoch=epoch, iteration=iteration)
 
                     # save model at checkpoints
                     if self.config.SAVE_INTERVAL and iteration > 0 and iteration % self.config.SAVE_INTERVAL == 0 and self.global_rank == 0:
@@ -157,7 +163,7 @@ class SINTrainer:
                 # self.writer.add_scalar("psnr/val", psnr, iteration)
                 # self.writer.add_scalar("ssim/val", ssim, iteration)
 
-                self.visualize(batch, keys=['image', 'masked_image', 'sketch', 'inpainted'], path=self.config.OUTPUT_DIR, epoch=epoch, iteration=0)
+                self.visualize(batch, keys=['image', 'masked_image', 'sketch_visual', 'inpainted'], path=self.config.OUTPUT_DIR, epoch=epoch, iteration=0)
 
                 self.save(epoch, iteration=0)
 

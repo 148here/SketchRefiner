@@ -9,7 +9,14 @@ from SRN_src.utils import RandomDeformSketch, generate_stroke_mask
 
 # 在线生成 edge / sketch / mask 的工具与配置
 try:
-    from YZA_patch.config import RESOLUTION as YZA_RESOLUTION, USE_COMPLEX_MASK, SKETCH_PARAMS, MASK_PARAMS
+    from YZA_patch.config import (
+        RESOLUTION as YZA_RESOLUTION,
+        USE_COMPLEX_MASK,
+        SKETCH_PARAMS,
+        MASK_PARAMS,
+        EXTERNAL_EDGE_POLARITY,
+        MODEL_EDGE_POLARITY,
+    )
     from YZA_patch.generator import generate_triplet
 except ImportError:
     # 若导入失败，仍然允许使用旧的离线数据流程
@@ -17,6 +24,8 @@ except ImportError:
     USE_COMPLEX_MASK = False
     SKETCH_PARAMS = {}
     MASK_PARAMS = {}
+    EXTERNAL_EDGE_POLARITY = "black_on_white"
+    MODEL_EDGE_POLARITY = "white_on_black"
     generate_triplet = None
 
 import torch
@@ -24,6 +33,39 @@ from torch.utils.data import DataLoader
 
 
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.webp'}
+
+
+def _normalize_gray01(image):
+    array = np.asarray(image)
+    if array.ndim == 3:
+        array = cv2.cvtColor(array, cv2.COLOR_RGB2GRAY)
+    array = array.astype(np.float32)
+    if array.size and array.max() > 1.0:
+        array = array / 255.0
+    return array
+
+
+def _binarize_edge_like(image, threshold):
+    binary = (_normalize_gray01(image) > float(threshold)).astype(np.float32)
+    return np.expand_dims(binary, axis=-1)
+
+
+def _convert_line_polarity(binary, source_polarity, target_polarity):
+    source = str(source_polarity or "black_on_white").strip().lower()
+    target = str(target_polarity or "white_on_black").strip().lower()
+    valid = {"black_on_white", "white_on_black"}
+    if source not in valid:
+        raise ValueError("Unsupported source edge polarity: %s" % source_polarity)
+    if target not in valid:
+        raise ValueError("Unsupported target edge polarity: %s" % target_polarity)
+    if source == target:
+        return binary.astype(np.float32)
+    return (1.0 - binary).astype(np.float32)
+
+
+def _external_edge_to_model(image, threshold):
+    binary = _binarize_edge_like(image, threshold)
+    return _convert_line_polarity(binary, EXTERNAL_EDGE_POLARITY, MODEL_EDGE_POLARITY)
 
 
 # train dataset
@@ -118,7 +160,6 @@ class TrainDataset(torch.utils.data.Dataset):
 
         # 归一化到 [0,1]
         data['image'] = img_np.astype(np.float32) / 255.0
-        data['edge'] = edge_np.astype(np.float32) / 255.0
 
         # mask：
         # - 若 USE_COMPLEX_MASK=True 且在线生成器返回 mask_np，则直接使用；
@@ -146,16 +187,16 @@ class TrainDataset(torch.utils.data.Dataset):
                 (self.configs.size, self.configs.size),
                 interpolation=cv2.INTER_LINEAR,
             )
-        if data['edge'].shape[0:2] != (self.configs.size, self.configs.size):
-            data['edge'] = cv2.resize(
-                data['edge'],
+        if edge_np.shape[0:2] != (self.configs.size, self.configs.size):
+            edge_np = cv2.resize(
+                edge_np,
                 (self.configs.size, self.configs.size),
                 interpolation=cv2.INTER_LINEAR,
             )
 
         # 二值化 edge（与原始实现保持一致）
         thresh = random.uniform(0.65, 0.75)
-        _, data['edge'] = cv2.threshold(data['edge'], thresh=thresh, maxval=1.0, type=cv2.THRESH_BINARY)
+        data['edge'] = _external_edge_to_model(edge_np, thresh)
 
         # [H, W, C] -> [C, H, W]
         data['image'] = torch.from_numpy(data['image']).permute(2, 0, 1).contiguous()
@@ -166,13 +207,18 @@ class TrainDataset(torch.utils.data.Dataset):
         # - 在线模式：直接使用 generator 返回的 sketch_np；
         # - 回退模式：使用 RandomDeformSketch(edge) 生成。
         if sketch_np is not None:
-            sketch_tensor = torch.from_numpy(sketch_np.astype(np.float32) / 255.0).permute(2, 0, 1).contiguous()
+            sketch_model = _external_edge_to_model(sketch_np, 0.5)
+            sketch_tensor = torch.from_numpy(sketch_model).permute(2, 0, 1).contiguous()
         else:
             sketch_tensor = self.deform_func(data['edge'].unsqueeze(0), self.max_move).squeeze(0)
 
         # 压到单通道
-        data['sketch'] = torch.sum(sketch_tensor / 3.0, dim=0, keepdim=True)
-        data['edge'] = torch.sum(data['edge'] / 3.0, dim=0, keepdim=True)
+        if sketch_tensor.size(0) > 1:
+            data['sketch'] = torch.sum(sketch_tensor / 3.0, dim=0, keepdim=True)
+        else:
+            data['sketch'] = sketch_tensor
+        if data['edge'].size(0) > 1:
+            data['edge'] = torch.sum(data['edge'] / 3.0, dim=0, keepdim=True)
 
         # 返回 data：image, mask, sketch, edge
         data['sketch'] = data['sketch'].detach()
